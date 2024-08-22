@@ -1,53 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, render_template_string, send_from_directory
+from keras.models import load_model
 import numpy as np
-import tensorflow as tf 
-from werkzeug.utils import escape
+import os
+from PIL import Image
 
 app = Flask(__name__)
-
-# Load your models
-model1 = tf.keras.models.load_model('models/breast_cancer_model.keras')
-model2 = tf.keras.models.load_model('models/lung_cancer_model.keras')
-model3 = tf.keras.models.load_model('models/skin_cancer_model.keras')
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    data = request.json
-    # Process data and make predictions
-    pred1 = model1.predict(np.array(data))
-    pred2 = model2.predict(np.array(data))
-    pred3 = model3.predict(np.array(data))
-
-    # Return predictions
-    return jsonify({
-        'model1_prediction': pred1.tolist(),
-        'model2_prediction': pred2.tolist(),
-        'model3_prediction': pred3.tolist()
-    })
-
-
-from flask import Flask, request, jsonify
-
-app = Flask(__name__)
-
-
-@app.route('/')
-def home():
-    return "Welcome to the Cancer Diagnosis App!"
-
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    # Your prediction logic here
-    return jsonify({'result': 'Prediction result'})
-
-from flask import Flask, request, render_template_string
-
-app = Flask(__name__)
-
-# Professional HTML and CSS Template
 HTML_TEMPLATE = '''
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -200,23 +158,62 @@ HTML_TEMPLATE = '''
 </html>
 '''
 
+# Load your models
+model1 = load_model('breast_cancer_model.keras')
+model2 = load_model('lung_cancer_model.keras')
+model3 = load_model('skin_cancer_model.keras')
+
+
+def preprocess_file(file):
+    # Implement this function to preprocess the file as needed
+    img = Image.open(file)
+    img = img.resize((224, 224))  # Resize to match model input
+    img_array = np.array(img) / 255.0  # Normalize
+    img_array = np.expand_dims(img_array, axis=0)  # Add batch dimension
+    return img_array
+
+
 @app.route('/')
 def home():
     return render_template_string(HTML_TEMPLATE)
 
+
 @app.route('/predict', methods=['POST'])
 def predict():
-    # Simulate prediction result
     file = request.files['file']
-    prediction = "Sample Prediction Result"  # Replace with your prediction logic
-    return render_template_string(HTML_TEMPLATE, prediction=prediction)
 
-from flask import send_from_directory
+    if not file:
+        return jsonify({'error': 'No file provided'}), 400
+
+    # Preprocess the file
+    img_array = preprocess_file(file)
+
+    # Make predictions
+    prediction1 = model1.predict(img_array)[0][0]
+    prediction2 = model2.predict(img_array)[0][0]
+    prediction3 = model3.predict(img_array)[0][0]
+
+    # Return results
+    prediction_result = f"Breast Cancer Model: {prediction1:.2f}, Lung Cancer Model: {prediction2:.2f}, Skin Cancer Model: {prediction3:.2f}"
+    return render_template_string(HTML_TEMPLATE, prediction=prediction_result)
+
 
 @app.route('/favicon.ico')
 def favicon():
     return send_from_directory(os.path.join(app.root_path, 'static'),
                                'favicon.ico', mimetype='image/vnd.microsoft.icon')
+import requests
+url = 'http://127.0.0.1:5000/predict'
+data = [1, 2, 3, 4]  # Replace with your actual input data
+response = requests.post(url, json=data)
+print(response.json())
+import tensorflow as tf
+
+# Define the correct path to your model files
+model1 = tf.keras.models.load_model('models/breast_cancer_model.keras')
+model2 = tf.keras.models.load_model('models/lung_cancer_model.keras')
+model3 = tf.keras.models.load_model('models/skin_cancer_model.keras')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
