@@ -49,6 +49,6 @@ def predict():
         return jsonify({'prediction': prediction})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+save.fitzpatrick_skintype_model17k.keras
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
