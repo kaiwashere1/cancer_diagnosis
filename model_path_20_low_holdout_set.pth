@@ -1,0 +1,21 @@
+import torch
+import torch.nn as nn
+from torchvision import models
+
+# Define the model architecture
+model = models.vgg16(pretrained=False)
+model.classifier[6] = nn.Sequential(
+    nn.Linear(4096, 256), 
+    nn.ReLU(), 
+    nn.Dropout(0.4),
+    nn.Linear(256, 2),  # Adjust the output layer according to your number of classes
+    nn.LogSoftmax(dim=1)
+)
+model = nn.DataParallel(model)
+
+# Assuming you have the trained weights, load them into the model
+# If you don't have the trained weights, you can skip this step
+# model.load_state_dict(torch.load("path_to_trained_weights.pth"))
+
+# Save the state dictionary to the file
+torch.save(model.state_dict(), "model_path_20_low_holdout_set.pth")
